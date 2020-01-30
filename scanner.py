@@ -37,7 +37,7 @@ def main():
 	# Select file
 	file = input(Fore.CYAN + ' >>> Select file: ' + Fore.RESET)
 	if not path.exists(file):
-		exit(Fore.RED + "[!] File " + file + " not found!" + Fore.RESET)
+		exit(Fore.RED + "[!] File " + path.basename(file) + " not found!" + Fore.RESET)
 	else:
 		file_md5 = getFilemd5(file)
 
@@ -45,42 +45,49 @@ def main():
 	virustotal = json_loads(request.urlopen('https://www.virustotal.com/ui/search?query=' + file_md5).read())
 
 	# Show scanners results in table
-	detection = virustotal['data'][0]['attributes']['last_analysis_results']
-	table_data = [
-	    ['Scanner', 'Category']
-	]
-	for res in detection:
-		engine   = detection[res]['engine_name']
-		category = detection[res]['category']
+	try:
+		detection = virustotal['data'][0]['attributes']['last_analysis_results']
+	except IndexError:
+		print(Fore.YELLOW + "[!] File " + path.basename(file) + " has never been uploaded to VirusTotal" + Fore.RESET)
+		if input(Fore.BLUE + '[?] Open VirusTotal to upload file? (y/n)\n ---> ' + Fore.RESET).lower() in ('y', 'yes'):
+			webbrowser_open('https://www.virustotal.com/gui/home/upload')
+		exit()
+	else:
+		table_data = [
+		    ['Scanner', 'Category']
+		]
+		for res in detection:
+			engine   = detection[res]['engine_name']
+			category = detection[res]['category']
 
-		# Change color if file malicious
-		if category.lower() == "undetected":
-			category = Fore.GREEN + category
-		else:
-			category = Fore.RED + category
+			# Change color if file malicious
+			if category.lower() == "undetected":
+				category = Fore.GREEN + category
+			else:
+				category = Fore.RED + category
 
-		category += Fore.RESET
-		# Add to table
-		table_data.append([engine, category])
+			category += Fore.RESET
+			# Add to table
+			table_data.append([engine, category])
 
-	# Table
-	table = AsciiTable(table_data)
-	print(table.table)
+		# Table
+		table = AsciiTable(table_data)
+		print(table.table)
 
-	# Show stats
-	detection = virustotal['data'][0]['attributes']['last_analysis_stats']
-	print(
-		"\n>> STATS:"
-		"\n-*  Malicious   : " + str(detection['malicious'])  +
-		"\n-*  Suspicious  : " + str(detection['suspicious']) +
-		"\n-*  Harmless    : " + str(detection['harmless'])   +
-		"\n-*  Undetected  : " + str(detection['undetected'])
-		)
+		# Show stats
+		detection = virustotal['data'][0]['attributes']['last_analysis_stats']
+		print(
+			"\n>> STATS:"
+			"\n   Malicious   : " + str(detection['malicious'])  +
+			"\n   Suspicious  : " + str(detection['suspicious']) +
+			"\n   Harmless    : " + str(detection['harmless'])   +
+			"\n   Undetected  : " + str(detection['undetected'])
+			)
 
-	# Open full report?
-	if virustotal['data']:
-		if input('\n [?] Open full VirusTotal report? (y/n)\n ---> ').lower() in ('y', 'yes'):
-			webbrowser_open('https://www.virustotal.com/gui/file/' + file_md5 + '/detection')
+		# Open full report?
+		if virustotal['data']:
+			if input(Fore.YELLOW + '[?] Open full VirusTotal report? (y/n)\n ---> ' + Fore.RESET).lower() in ('y', 'yes'):
+				webbrowser_open('https://www.virustotal.com/gui/file/' + file_md5 + '/detection')
 
 if __name__ == '__main__':
 	print(logo)
